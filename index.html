@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PostgreSQL Viewer Test App</title>
+  <style>
+    :root { --bg:#f4f7fb; --card:#fff; --ink:#172033; --muted:#637083; --line:#d9e2ef; --blue:#2563eb; --red:#dc2626; --green:#15803d; --amber:#b45309; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--bg); color:var(--ink); }
+    header { background:linear-gradient(135deg,#0f172a,#1d4ed8); color:white; padding:22px 28px; }
+    header h1 { margin:0 0 6px; font-size:24px; }
+    header p { margin:0; opacity:.9; }
+    main { max-width:1200px; margin:22px auto; padding:0 18px 40px; }
+    .grid { display:grid; grid-template-columns: 340px 1fr; gap:18px; align-items:start; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 8px 20px rgba(15,23,42,.06); overflow:hidden; }
+    .card h2 { font-size:17px; margin:0; padding:16px 18px; border-bottom:1px solid var(--line); }
+    .body { padding:16px 18px; }
+    button { border:0; border-radius:10px; padding:10px 13px; cursor:pointer; font-weight:700; background:var(--blue); color:white; }
+    button.secondary { background:#e8eef9; color:#1f2a44; }
+    button.danger { background:var(--red); }
+    button.success { background:var(--green); }
+    button.warning { background:var(--amber); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    input, select { width:100%; padding:10px; border:1px solid var(--line); border-radius:10px; background:white; }
+    label { display:block; font-size:12px; color:var(--muted); font-weight:700; margin:10px 0 5px; }
+    .row { display:flex; gap:8px; align-items:center; }
+    .row > * { flex:1; }
+    .stack { display:flex; flex-direction:column; gap:10px; }
+    .tables { display:flex; flex-direction:column; gap:8px; }
+    .tableItem { border:1px solid var(--line); border-radius:12px; padding:11px; background:#fbfdff; cursor:pointer; }
+    .tableItem:hover { border-color:#93b4ff; }
+    .tableItem strong { display:block; }
+    .tableItem span { color:var(--muted); font-size:12px; }
+    .status { padding:10px 12px; border-radius:12px; background:#eef2ff; color:#1e3a8a; margin-bottom:12px; word-break:break-word; }
+    .status.error { background:#fee2e2; color:#991b1b; }
+    .status.success { background:#dcfce7; color:#14532d; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#f8fafc; font-size:12px; text-transform:uppercase; color:#475569; }
+    .scroll { overflow:auto; max-height:520px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:bold; }
+    .columnsBox { border:1px solid var(--line); border-radius:12px; padding:10px; background:#fbfdff; }
+    .small { font-size:12px; }
+    @media (max-width:900px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PostgreSQL Viewer Test App</h1>
+    <p>Small personal AWS app: browser → API Gateway → Lambda → RDS PostgreSQL</p>
+  </header>
+
+  <main>
+    <div id="status" class="status">Ready.</div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Database Tables</h2>
+        <div class="body stack">
+          <button onclick="loadTables()">Refresh Tables</button>
+          <button class="success" onclick="createSample()">Create Sample Table</button>
+          <div id="tables" class="tables"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 id="viewerTitle">Table Viewer</h2>
+        <div class="body">
+          <div id="tableMeta" class="muted">Select a table on the left.</div>
+          <div id="columnsArea"></div>
+          <div class="scroll" id="rowsArea"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>Create New Table</h2>
+      <div class="body stack">
+        <div class="row">
+          <div>
+            <label>Table Name</label>
+            <input id="newTableName" placeholder="example: notes" />
+          </div>
+          <div>
+            <label>Schema</label>
+            <input id="newSchemaName" value="public" />
+          </div>
+        </div>
+
+        <div class="columnsBox stack" id="newColumns"></div>
+        <div class="row">
+          <button class="secondary" onclick="addColumnField()">Add Column Field</button>
+          <button onclick="createTable()">Create Table</button>
+        </div>
+        <div class="muted small">Allowed column types: text, varchar, integer, bigint, numeric, boolean, date, timestamp, timestamptz, jsonb, uuid.</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <h2>Edit / Delete Selected Table</h2>
+      <div class="body stack">
+        <div class="muted">Selected table: <span id="selectedPill" class="pill">none</span></div>
+        <div class="row">
+          <div>
+            <label>New Column Name</label>
+            <input id="addColumnName" placeholder="example: status" />
+          </div>
+          <div>
+            <label>New Column Type</label>
+            <select id="addColumnType"></select>
+          </div>
+          <div style="align-self:end;">
+            <button class="warning" onclick="addColumnToSelected()">Add Column</button>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>To delete, type this exact confirmation</label>
+            <input id="dropConfirm" placeholder="DROP public.table_name" />
+          </div>
+          <div style="align-self:end;">
+            <button class="danger" onclick="dropSelectedTable()">Delete Selected Table</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_URL = "https://k09trog3ck.execute-api.us-east-1.amazonaws.com/default/test-postgres-viewer-api";
+    const TYPES = ["text", "varchar", "integer", "bigint", "numeric", "boolean", "date", "timestamp", "timestamptz", "jsonb", "uuid"];
+    let selected = null;
+
+    function setStatus(message, kind="") {
+      const el = document.getElementById("status");
+      el.className = "status" + (kind ? " " + kind : "");
+      el.textContent = message;
+    }
+
+    async function api(payload = null) {
+      const options = payload ? {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      } : {};
+      const res = await fetch(API_URL, options);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { success:false, error:text }; }
+      if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    async function loadTables() {
+      try {
+        setStatus("Loading tables...");
+        const data = await api({ action: "listTables" });
+        renderTables(data.tables || []);
+        setStatus(`Loaded ${data.tables?.length || 0} table(s).`, "success");
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    }
+
+    function renderTables(tables) {
+      const container = document.getElementById("tables");
+      if (!tables.length) {
+        container.innerHTML = `<div class="muted">No tables found. Click “Create Sample Table”.</div>`;
+        return;
+      }
+      container.innerHTML = tables.map(t => `
+        <div class="tableItem" onclick="openTable('${t.table_schema}', '${t.table_name}')">
+          <strong>${t.table_name}</strong>
+          <span>${t.table_schema}</span>
+        </div>
+      `).join("");
+    }
+
+    async function openTable(schemaName, tableName) {
+      try {
+        selected = { schemaName, tableName };
+        document.getElementById("selectedPill").textContent = `${schemaName}.${tableName}`;
+        document.getElementById("dropConfirm").placeholder = `DROP ${schemaName}.${tableName}`;
+        setStatus(`Opening ${schemaName}.${tableName}...`);
+        const data = await api({ action: "getTable", schemaName, tableName, limit: 50 });
+        renderTable(data);
+        setStatus(`Opened ${schemaName}.${tableName}.`, "success");
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    }
+
+    function renderTable(data) {
+      document.getElementById("viewerTitle").textContent = `${data.schemaName}.${data.tableName}`;
+      document.getElementById("tableMeta").textContent = `${data.columns.length} column(s), showing up to 50 rows.`;
+      document.getElementById("columnsArea").innerHTML = `
+        <h3>Columns</h3>
+        <table><thead><tr><th>Name</th><th>Type</th><th>Nullable</th><th>Default</th></tr></thead>
+        <tbody>${data.columns.map(c => `<tr><td>${c.column_name}</td><td>${c.data_type}</td><td>${c.is_nullable}</td><td>${c.column_default || ""}</td></tr>`).join("")}</tbody></table>
+      `;
+      const rows = data.rows || [];
+      if (!rows.length) {
+        document.getElementById("rowsArea").innerHTML = `<h3>Rows</h3><div class="muted">No rows found.</div>`;
+        return;
+      }
+      const keys = Object.keys(rows[0]);
+      document.getElementById("rowsArea").innerHTML = `
+        <h3>Rows</h3>
+        <table><thead><tr>${keys.map(k => `<th>${k}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${keys.map(k => `<td>${formatCell(r[k])}</td>`).join("")}</tr>`).join("")}</tbody></table>
+      `;
+    }
+
+    function formatCell(value) {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "object") return JSON.stringify(value);
+      return String(value).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[ch]));
+    }
+
+    async function createSample() {
+      try {
+        setStatus("Creating sample table...");
+        const data = await api({ action: "createSample" });
+        setStatus(data.message, "success");
+        await loadTables();
+      } catch (err) { setStatus(err.message, "error"); }
+    }
+
+    function typeSelect(value="text") {
+      return `<select class="colType">${TYPES.map(t => `<option value="${t}" ${t===value?"selected":""}>${t}</option>`).join("")}</select>`;
+    }
+
+    function addColumnField(name="", type="text") {
+      const box = document.getElementById("newColumns");
+      const div = document.createElement("div");
+      div.className = "row columnRow";
+      div.innerHTML = `
+        <input class="colName" placeholder="column_name" value="${name}" />
+        ${typeSelect(type)}
+        <label style="margin:0;"><input class="colRequired" type="checkbox" style="width:auto;" /> Required</label>
+        <label style="margin:0;"><input class="colPk" type="checkbox" style="width:auto;" /> Primary Key</label>
+        <button class="secondary" onclick="this.closest('.columnRow').remove()">Remove</button>
+      `;
+      box.appendChild(div);
+    }
+
+    async function createTable() {
+      try {
+        const tableName = document.getElementById("newTableName").value.trim();
+        const schemaName = document.getElementById("newSchemaName").value.trim() || "public";
+        const columns = [...document.querySelectorAll(".columnRow")].map(row => ({
+          name: row.querySelector(".colName").value.trim(),
+          type: row.querySelector(".colType").value,
+          required: row.querySelector(".colRequired").checked,
+          primaryKey: row.querySelector(".colPk").checked
+        })).filter(c => c.name);
+        setStatus("Creating table...");
+        const data = await api({ action: "createTable", schemaName, tableName, columns });
+        setStatus(data.message, "success");
+        await loadTables();
+      } catch (err) { setStatus(err.message, "error"); }
+    }
+
+    function fillTypeDropdowns() {
+      document.getElementById("addColumnType").innerHTML = TYPES.map(t => `<option value="${t}">${t}</option>`).join("");
+    }
+
+    async function addColumnToSelected() {
+      if (!selected) return setStatus("Select a table first.", "error");
+      try {
+        const columnName = document.getElementById("addColumnName").value.trim();
+        const columnType = document.getElementById("addColumnType").value;
+        const data = await api({ action: "addColumn", ...selected, columnName, columnType });
+        setStatus(data.message, "success");
+        await openTable(selected.schemaName, selected.tableName);
+      } catch (err) { setStatus(err.message, "error"); }
+    }
+
+    async function dropSelectedTable() {
+      if (!selected) return setStatus("Select a table first.", "error");
+      try {
+        const confirmText = document.getElementById("dropConfirm").value.trim();
+        const data = await api({ action: "dropTable", ...selected, confirm: confirmText });
+        setStatus(data.message, "success");
+        selected = null;
+        document.getElementById("selectedPill").textContent = "none";
+        document.getElementById("viewerTitle").textContent = "Table Viewer";
+        document.getElementById("tableMeta").textContent = "Select a table on the left.";
+        document.getElementById("columnsArea").innerHTML = "";
+        document.getElementById("rowsArea").innerHTML = "";
+        await loadTables();
+      } catch (err) { setStatus(err.message, "error"); }
+    }
+
+    fillTypeDropdowns();
+    addColumnField("id", "integer");
+    addColumnField("name", "text");
+    loadTables();
+  </script>
+</body>
+</html>
