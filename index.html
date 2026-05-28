@@ -161,9 +161,31 @@ async function selectTable(schema, table) {
   } catch(e) { msg(e.message, true); }
 }
 
+function normalizeType(t) {
+  if (t === 'character varying') return 'varchar';
+  if (t === 'timestamp without time zone') return 'timestamp';
+  if (t === 'timestamp with time zone') return 'timestamptz';
+  return TYPES.includes(t) ? t : 'text';
+}
+
 function renderViewer() {
   document.getElementById('viewerTitle').textContent = `${selected.schema}.${selected.table}`;
-  const colsTable = `<h3>Columns</h3><table><thead><tr><th>Name</th><th>Type</th><th>Nullable</th><th>Default</th></tr></thead><tbody>${selectedColumns.map(c => `<tr><td>${c.column_name}</td><td>${c.data_type}</td><td>${c.is_nullable}</td><td>${c.column_default || ''}</td></tr>`).join('')}</tbody></table>`;
+  const colsTable = `<h3>Columns / Structure</h3>
+    <table><thead><tr><th>Name</th><th>Type</th><th>Nullable</th><th>Default</th><th>Actions</th></tr></thead><tbody>
+    ${selectedColumns.map((c, idx) => `<tr>
+      <td><input id="colname_${idx}" value="${escapeAttr(c.column_name)}"></td>
+      <td><select id="coltype_${idx}">${typeSelect(normalizeType(c.data_type))}</select><div class="small">Current: ${escapeAttr(c.data_type)}</div></td>
+      <td>${c.is_nullable}</td>
+      <td>${escapeAttr(c.column_default || '')}</td>
+      <td>
+        <button class="primary" onclick="renameColumn(${idx})">Rename</button>
+        <button class="orange" onclick="changeColumnType(${idx})">Change Type</button>
+        <button onclick="toggleRequired(${idx})">${c.is_nullable === 'YES' ? 'Make Required' : 'Allow Nulls'}</button>
+        <button class="red" onclick="dropColumn(${idx})">Delete Column</button>
+      </td>
+    </tr>`).join('')}
+    </tbody></table>
+    <p class="small">Column type changes may fail if existing data cannot be converted. “Make Required” may fail if the column already contains blank/null values.</p>`;
   const dataCols = selectedColumns.map(c => c.column_name);
   const insertForm = `<div class="section"><h3>Insert New Row</h3><div class="row">${dataCols.map(c => `<div><label>${c}</label><input id="insert_${c}" placeholder="value for ${c}"></div>`).join('')}</div><br><button class="green" onclick="insertRow()">Insert Row</button></div>`;
   let rowsHtml = '<h3>Rows</h3>';
@@ -225,6 +247,54 @@ async function dropTable() {
     tables = data.tables || [];
     renderTables();
     msg(data.message || `Deleted ${old.schema}.${old.table}.`);
+  } catch(e) { msg(e.message, true); }
+}
+
+
+async function renameColumn(idx) {
+  if (!selected) return msg('Select a table first.', true);
+  try {
+    const oldColumn = selectedColumns[idx].column_name;
+    const newColumn = document.getElementById(`colname_${idx}`).value.trim();
+    if (!newColumn || newColumn === oldColumn) return msg('Enter a different column name.', true);
+    const data = await api({ action:'renameColumn', schema:selected.schema, table:selected.table, oldColumn, newColumn });
+    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column renamed.');
+  } catch(e) { msg(e.message, true); }
+}
+
+async function changeColumnType(idx) {
+  if (!selected) return msg('Select a table first.', true);
+  try {
+    const column = selectedColumns[idx].column_name;
+    const type = document.getElementById(`coltype_${idx}`).value;
+    if (!confirm(`Change ${column} to ${type}? Existing data must be convertible to the new type.`)) return;
+    const data = await api({ action:'changeColumnType', schema:selected.schema, table:selected.table, column, type });
+    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column type changed.');
+  } catch(e) { msg(e.message, true); }
+}
+
+async function toggleRequired(idx) {
+  if (!selected) return msg('Select a table first.', true);
+  try {
+    const column = selectedColumns[idx].column_name;
+    const required = selectedColumns[idx].is_nullable === 'YES';
+    const label = required ? 'make this column required / NOT NULL' : 'allow this column to contain nulls';
+    if (!confirm(`Are you sure you want to ${label}?`)) return;
+    const data = await api({ action:'setColumnRequired', schema:selected.schema, table:selected.table, column, required });
+    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column requirement changed.');
+  } catch(e) { msg(e.message, true); }
+}
+
+async function dropColumn(idx) {
+  if (!selected) return msg('Select a table first.', true);
+  try {
+    const column = selectedColumns[idx].column_name;
+    const expected = `DROP COLUMN ${selected.schema}.${selected.table}.${column}`;
+    const typed = prompt(`This will permanently delete the column and its data. Type exactly:
+${expected}`);
+    if (typed !== expected) return msg('Drop-column confirmation text did not match.', true);
+    const data = await api({ action:'dropColumn', schema:selected.schema, table:selected.table, column, confirm: typed });
+    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column deleted.');
   } catch(e) { msg(e.message, true); }
 }
 
