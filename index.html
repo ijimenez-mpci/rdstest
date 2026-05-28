@@ -3,333 +3,88 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PostgreSQL Viewer Test App</title>
+  <title>PostgreSQL Studio Test App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --blue:#2563eb; --navy:#13265f; --bg:#f3f6fb; --card:#fff; --line:#d8e0ee; --text:#0f172a; --muted:#64748b; --green:#15803d; --red:#b91c1c; --orange:#c2410c; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: Arial, Helvetica, sans-serif; background:var(--bg); color:var(--text); }
-    header { padding:24px 32px; color:white; background:linear-gradient(120deg,var(--navy),#2453d6); }
-    header h1 { margin:0 0 6px; font-size:26px; }
-    header p { margin:0; opacity:.92; font-size:16px; }
-    main { max-width:1250px; margin:0 auto; padding:22px; }
-    .msg { margin:0 auto 14px; padding:12px 14px; border-radius:10px; max-width:1050px; }
-    .ok { background:#dcfce7; color:#166534; } .err { background:#fee2e2; color:#991b1b; }
-    .grid { display:grid; grid-template-columns:320px 1fr; gap:18px; align-items:start; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:0 8px 24px rgba(15,23,42,.06); overflow:hidden; }
-    .card h2 { margin:0; padding:15px 18px; font-size:18px; border-bottom:1px solid var(--line); }
-    .pad { padding:16px; }
-    button { border:0; border-radius:9px; padding:10px 14px; font-weight:700; cursor:pointer; background:#e8eef9; color:#172554; }
-    button.primary { background:var(--blue); color:white; } button.green { background:var(--green); color:white; } button.red { background:var(--red); color:white; } button.orange { background:var(--orange); color:white; }
-    button:disabled { opacity:.55; cursor:not-allowed; }
-    input, select, textarea { width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:9px; font-size:14px; background:white; }
-    label { font-size:13px; font-weight:700; color:#40516d; display:block; margin-bottom:6px; }
-    .stack { display:grid; gap:10px; } .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; } .row3 { display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end; }
-    .table-list { display:grid; gap:8px; margin-top:10px; }
-    .table-pill { text-align:left; background:#f8fafc; border:1px solid var(--line); padding:11px 12px; border-radius:10px; cursor:pointer; }
-    .table-pill.active { border-color:var(--blue); box-shadow:0 0 0 2px rgba(37,99,235,.15); }
-    .small { color:var(--muted); font-size:13px; } .badge { background:#eef2ff; color:#3730a3; padding:3px 8px; border-radius:999px; font-weight:700; font-size:12px; }
-    table { width:100%; border-collapse:collapse; font-size:14px; } th, td { border-bottom:1px solid var(--line); padding:9px; text-align:left; vertical-align:top; } th { background:#f8fafc; color:#334155; font-size:12px; text-transform:uppercase; }
-    td input { min-width:130px; }
-    .section { margin-top:18px; } .danger { border:1px solid #fecaca; background:#fff7f7; border-radius:12px; padding:14px; }
-    .full { grid-column:1 / -1; } .hidden { display:none; }
-    @media (max-width:900px) { .grid,.row,.row3 { grid-template-columns:1fr; } main { padding:14px; } }
+    :root{
+      --bg:#f5f7fb; --panel:#ffffff; --panel2:#f8fafc; --text:#111827; --muted:#64748b;
+      --line:#dbe3ee; --blue:#2563eb; --blue2:#1d4ed8; --green:#16a34a; --red:#dc2626;
+      --orange:#b45309; --navy:#0f172a; --shadow:0 18px 50px rgba(15,23,42,.10);
+      --radius:24px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;background:linear-gradient(180deg,#f8fbff 0%,#eef3fb 100%);color:var(--text)}
+    header{padding:28px 34px;background:radial-gradient(circle at top left,#1d4ed8 0,#132b77 44%,#0f172a 100%);color:white;box-shadow:0 10px 28px rgba(15,23,42,.22)}
+    header h1{margin:0;font-size:28px;letter-spacing:-.04em;font-weight:800}
+    header p{margin:7px 0 0;color:#dbeafe;font-weight:500}
+    main{max-width:1320px;margin:28px auto;padding:0 22px;position:relative;min-height:760px}
+    .topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:18px}
+    .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);font-weight:800}
+    .title{font-size:28px;font-weight:800;letter-spacing:-.04em;margin:2px 0}
+    .subtitle{color:var(--muted);margin:0;font-size:14px}
+    .status{margin:0 0 18px;padding:14px 18px;border-radius:18px;border:1px solid transparent;font-size:14px;font-weight:700;display:none}
+    .status.ok{display:block;background:#dcfce7;color:#166534;border-color:#bbf7d0}.status.err{display:block;background:#fee2e2;color:#991b1b;border-color:#fecaca}
+    .shell{transition:filter .25s ease,opacity .25s ease,transform .25s ease}.shell.blurred{filter:blur(7px);opacity:.38;pointer-events:none;user-select:none;transform:scale(.992)}
+    .grid{display:grid;grid-template-columns:380px 1fr;gap:22px}.card{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.card h2{margin:0;padding:20px 22px;border-bottom:1px solid var(--line);font-size:17px;letter-spacing:-.02em}.pad{padding:20px 22px}.stack{display:flex;flex-direction:column;gap:14px}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.row3{display:grid;grid-template-columns:1fr 220px 190px;gap:12px;align-items:end}.full{grid-column:1/-1}
+    label{display:block;font-size:12px;color:#475569;font-weight:800;margin:0 0 7px} input,select{width:100%;border:1px solid #cbd5e1;background:white;border-radius:14px;padding:12px 14px;font:500 14px 'Plus Jakarta Sans',sans-serif;outline:none}input:focus,select:focus{border-color:#60a5fa;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+    button{border:0;border-radius:14px;padding:12px 16px;font:800 14px 'Plus Jakarta Sans',sans-serif;cursor:pointer;background:#e8eef8;color:#0f172a;transition:.18s transform,.18s box-shadow,.18s background}button:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(15,23,42,.10)}button.primary{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:white}button.green{background:linear-gradient(135deg,#22c55e,#15803d);color:white}button.red{background:linear-gradient(135deg,#ef4444,#b91c1c);color:white}button.orange{background:linear-gradient(135deg,#f59e0b,#b45309);color:white}button.ghost{background:white;border:1px solid var(--line);color:#334155}.small{font-size:12px;color:var(--muted);line-height:1.5}.badge{display:inline-flex;align-items:center;border-radius:999px;background:#eef2ff;color:#3730a3;padding:6px 10px;font-size:12px;font-weight:800}.table-list{display:grid;gap:12px}.table-card{border:1px solid var(--line);border-radius:20px;padding:16px;background:linear-gradient(180deg,#fff,#f8fafc);display:grid;gap:12px}.table-card b{font-size:16px}.table-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.danger-zone{border:1px solid #fecaca;background:#fff7f7;border-radius:20px;padding:16px}.muted-box{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:20px;padding:18px;color:var(--muted);font-weight:600}
+    table{width:100%;border-collapse:collapse;font-size:13px;background:white;border-radius:18px;overflow:hidden}th{text-align:left;background:#f1f5f9;color:#334155;font-size:11px;text-transform:uppercase;letter-spacing:.06em}th,td{padding:11px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top}td input{min-width:130px}.overlay{position:absolute;inset:0;z-index:10;display:none}.overlay.open{display:block}.workspace{background:rgba(255,255,255,.96);border:1px solid #dbeafe;border-radius:30px;box-shadow:0 30px 90px rgba(15,23,42,.22);overflow:hidden;backdrop-filter:blur(16px)}.workspace-head{display:flex;justify-content:space-between;align-items:center;gap:14px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:white;padding:22px 24px}.workspace-head h2{margin:0;font-size:24px;letter-spacing:-.04em}.workspace-head p{margin:5px 0 0;color:#bfdbfe}.workspace-body{padding:22px;display:grid;gap:20px}.columns-grid{display:grid;gap:10px}.column-row{display:grid;grid-template-columns:1fr 180px 96px 1.3fr 420px;gap:10px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:10px;background:#fbfdff}.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.scroll{overflow:auto;max-width:100%}.empty{padding:24px;text-align:center;color:var(--muted);font-weight:700;background:#f8fafc;border-radius:18px}.footer-note{margin-top:10px}.hide{display:none!important}@media(max-width:980px){.grid,.row,.row3,.column-row{grid-template-columns:1fr}.workspace{border-radius:22px}.table-actions{grid-template-columns:1fr}.main{padding:0 14px}}
   </style>
 </head>
 <body>
-  <header>
-    <h1>PostgreSQL Viewer Test App</h1>
-    <p>Small personal AWS app: browser → API Gateway → Lambda → RDS PostgreSQL</p>
-  </header>
-  <main>
-    <div id="message" class="msg hidden"></div>
-
-    <div class="grid">
-      <section class="card">
-        <h2>Database Tables</h2>
-        <div class="pad stack">
-          <button class="primary" onclick="loadTables()">Refresh Tables</button>
-          <button class="green" onclick="createSample()">Create Sample Table</button>
-          <div id="tableList" class="table-list"></div>
-        </div>
-      </section>
-
-      <section class="card" id="viewerCard">
-        <h2 id="viewerTitle">Table Viewer</h2>
-        <div class="pad" id="viewerBody"><p class="small">Select a table on the left.</p></div>
-      </section>
-
-      <section class="card full">
-        <h2>Create New Table</h2>
-        <div class="pad stack">
-          <div class="row">
-            <div><label>Table Name</label><input id="newTableName" placeholder="example: notes"></div>
-            <div><label>Schema</label><input id="newTableSchema" value="public"></div>
-          </div>
-          <div id="newColumns" class="stack"></div>
-          <div class="row">
-            <button onclick="addNewColumnField()">Add Column Field</button>
-            <button class="primary" onclick="createTable()">Create Table</button>
-          </div>
-          <p class="small">Allowed column types: text, varchar, integer, bigint, numeric, boolean, date, timestamp, timestamptz, jsonb, uuid.</p>
-        </div>
-      </section>
-
-      <section class="card full">
-        <h2>Edit / Delete Selected Table</h2>
-        <div class="pad stack">
-          <div>Selected table: <span id="selectedBadge" class="badge">none</span></div>
-          <div class="row3">
-            <div><label>New Column Name</label><input id="addColumnName" placeholder="example: status"></div>
-            <div><label>New Column Type</label><select id="addColumnType"></select></div>
-            <button class="orange" onclick="addColumn()">Add Column</button>
-          </div>
-          <div class="danger">
-            <label>Delete confirmation</label>
-            <div class="row3">
-              <input id="dropConfirm" placeholder="Select a table first">
-              <button onclick="fillDropText()">Fill Exact Text</button>
-              <button class="red" onclick="dropTable()">Delete Selected Table</button>
-            </div>
-            <p id="dropHelp" class="small">You must type the exact confirmation text before deletion.</p>
-          </div>
-        </div>
-      </section>
+<header>
+  <h1>PostgreSQL Studio Test App</h1>
+  <p>Modern personal AWS app: Amplify → API Gateway → Lambda → RDS PostgreSQL</p>
+</header>
+<main>
+  <div id="message" class="status"></div>
+  <div id="mainShell" class="shell">
+    <div class="topbar">
+      <div><div class="eyebrow">Main Menu</div><div class="title">Database tables</div><p class="subtitle">From here you can create, rename, or delete tables. Open a table to manage its rows and columns.</p></div>
+      <button class="primary" onclick="loadTables()">Refresh Tables</button>
     </div>
-  </main>
-
+    <div class="grid">
+      <section class="card"><h2>Tables</h2><div class="pad stack"><button class="green" onclick="createSample()">Create Sample Table</button><div id="tableList" class="table-list"></div></div></section>
+      <section class="card"><h2>Main Menu Actions</h2><div class="pad stack"><div class="muted-box">Select <b>Open</b> to enter a table workspace. While inside a table, the main menu blurs and table creation/deletion is disabled until you go back.</div><div class="danger-zone"><b>Table rename/delete are only available here.</b><p class="small">Inside a table, you only manage that table’s columns and rows.</p></div></div></section>
+      <section class="card full"><h2>Create New Table</h2><div class="pad stack"><div class="row"><div><label>Table Name</label><input id="newTableName" placeholder="example: notes"></div><div><label>Schema</label><input id="newTableSchema" value="public"></div></div><div id="newColumns" class="stack"></div><div class="row"><button onclick="addNewColumnField()">Add Column Field</button><button class="primary" onclick="createTable()">Create Table</button></div><p class="small">Allowed column types: text, varchar, integer, bigint, numeric, boolean, date, timestamp, timestamptz, jsonb, uuid.</p></div></section>
+    </div>
+  </div>
+  <div id="detailOverlay" class="overlay"><div class="workspace"><div class="workspace-head"><div><h2 id="workspaceTitle">Table Workspace</h2><p id="workspaceSub">Rows and columns only</p></div><button class="ghost" onclick="backToMain()">← Back to Main Menu</button></div><div class="workspace-body" id="workspaceBody"></div></div></div>
+</main>
 <script>
 const API_URL = "https://k09trog3ck.execute-api.us-east-1.amazonaws.com/default/test-postgres-viewer-api";
 const TYPES = ["text", "varchar", "integer", "bigint", "numeric", "boolean", "date", "timestamp", "timestamptz", "jsonb", "uuid"];
-let tables = [];
-let selected = null;
-let selectedColumns = [];
-let selectedRows = [];
-
-function msg(text, isError=false) {
-  const el = document.getElementById('message');
-  el.className = 'msg ' + (isError ? 'err' : 'ok');
-  el.textContent = text;
-  el.classList.remove('hidden');
-}
-
-async function api(payload = null) {
-  const opts = payload ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) } : {};
-  const res = await fetch(API_URL, opts);
-  const data = await res.json();
-  if (!res.ok || data.success === false) throw new Error(data.error || 'Request failed');
-  return data;
-}
-
-function typeSelect(value='text') {
-  return TYPES.map(t => `<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join('');
-}
-
-document.getElementById('addColumnType').innerHTML = typeSelect('text');
-
-function renderTables() {
-  const list = document.getElementById('tableList');
-  if (!tables.length) { list.innerHTML = '<p class="small">No tables found. Click “Create Sample Table”.</p>'; return; }
-  list.innerHTML = tables.map(t => {
-    const key = `${t.table_schema}.${t.table_name}`;
-    const active = selected && selected.schema === t.table_schema && selected.table === t.table_name;
-    return `<button class="table-pill ${active?'active':''}" onclick="selectTable('${t.table_schema}','${t.table_name}')"><b>${t.table_name}</b><br><span class="small">${t.table_schema}</span></button>`;
-  }).join('');
-}
-
-async function loadTables() {
-  try { const data = await api({ action:'listTables' }); tables = data.tables || []; renderTables(); msg(`Loaded ${tables.length} table(s).`); }
-  catch(e) { msg(e.message, true); }
-}
-
-async function createSample() {
-  try { const data = await api({ action:'createSample' }); tables = data.tables || []; renderTables(); msg(data.message || 'Sample table created.'); }
-  catch(e) { msg(e.message, true); }
-}
-
-async function selectTable(schema, table) {
-  try {
-    selected = { schema, table };
-    document.getElementById('selectedBadge').textContent = `${schema}.${table}`;
-    document.getElementById('dropHelp').textContent = `Exact text required: DROP ${schema}.${table}`;
-    document.getElementById('dropConfirm').placeholder = `DROP ${schema}.${table}`;
-    renderTables();
-    const data = await api({ action:'getTable', schema, table });
-    selectedColumns = data.columns || [];
-    selectedRows = data.rows || [];
-    renderViewer();
-    msg(`Loaded ${schema}.${table}.`);
-  } catch(e) { msg(e.message, true); }
-}
-
-function normalizeType(t) {
-  if (t === 'character varying') return 'varchar';
-  if (t === 'timestamp without time zone') return 'timestamp';
-  if (t === 'timestamp with time zone') return 'timestamptz';
-  return TYPES.includes(t) ? t : 'text';
-}
-
-function renderViewer() {
-  document.getElementById('viewerTitle').textContent = `${selected.schema}.${selected.table}`;
-  const colsTable = `<h3>Columns / Structure</h3>
-    <table><thead><tr><th>Name</th><th>Type</th><th>Nullable</th><th>Default</th><th>Actions</th></tr></thead><tbody>
-    ${selectedColumns.map((c, idx) => `<tr>
-      <td><input id="colname_${idx}" value="${escapeAttr(c.column_name)}"></td>
-      <td><select id="coltype_${idx}">${typeSelect(normalizeType(c.data_type))}</select><div class="small">Current: ${escapeAttr(c.data_type)}</div></td>
-      <td>${c.is_nullable}</td>
-      <td>${escapeAttr(c.column_default || '')}</td>
-      <td>
-        <button class="primary" onclick="renameColumn(${idx})">Rename</button>
-        <button class="orange" onclick="changeColumnType(${idx})">Change Type</button>
-        <button onclick="toggleRequired(${idx})">${c.is_nullable === 'YES' ? 'Make Required' : 'Allow Nulls'}</button>
-        <button class="red" onclick="dropColumn(${idx})">Delete Column</button>
-      </td>
-    </tr>`).join('')}
-    </tbody></table>
-    <p class="small">Column type changes may fail if existing data cannot be converted. “Make Required” may fail if the column already contains blank/null values.</p>`;
-  const dataCols = selectedColumns.map(c => c.column_name);
-  const insertForm = `<div class="section"><h3>Insert New Row</h3><div class="row">${dataCols.map(c => `<div><label>${c}</label><input id="insert_${c}" placeholder="value for ${c}"></div>`).join('')}</div><br><button class="green" onclick="insertRow()">Insert Row</button></div>`;
-  let rowsHtml = '<h3>Rows</h3>';
-  if (!selectedRows.length) rowsHtml += '<p class="small">No rows found.</p>';
-  else {
-    rowsHtml += `<div style="overflow:auto"><table><thead><tr>${dataCols.map(c => `<th>${c}</th>`).join('')}<th>Actions</th></tr></thead><tbody>`;
-    rowsHtml += selectedRows.map((r, idx) => `<tr>${dataCols.map(c => `<td><input id="cell_${idx}_${c}" value="${escapeAttr(r[c])}"></td>`).join('')}<td><button class="primary" onclick="updateRow(${idx})">Save</button> <button class="red" onclick="deleteRow(${idx})">Delete</button></td></tr>`).join('');
-    rowsHtml += '</tbody></table></div><p class="small">This test app uses PostgreSQL ctid as a temporary row identifier. For a real app, use primary keys.</p>';
-  }
-  document.getElementById('viewerBody').innerHTML = `<p class="small">${selectedColumns.length} column(s), showing up to 50 rows.</p>${colsTable}${insertForm}<div class="section">${rowsHtml}</div>`;
-}
-
-function escapeAttr(v) { return String(v ?? '').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-
-function addNewColumnField(name='', type='text') {
-  const wrap = document.createElement('div');
-  wrap.className = 'row3';
-  wrap.innerHTML = `<input placeholder="column name" value="${escapeAttr(name)}"><select>${typeSelect(type)}</select><span><label><input type="checkbox" class="required" style="width:auto"> Required</label><label><input type="checkbox" class="pk" style="width:auto"> Primary Key</label></span><button onclick="this.parentElement.remove()">Remove</button>`;
-  document.getElementById('newColumns').appendChild(wrap);
-}
-
-async function createTable() {
-  try {
-    const table = document.getElementById('newTableName').value.trim();
-    const schema = document.getElementById('newTableSchema').value.trim() || 'public';
-    const columns = [...document.querySelectorAll('#newColumns .row3')].map(row => ({
-      name: row.children[0].value.trim(), type: row.children[1].value, required: row.querySelector('.required').checked, primaryKey: row.querySelector('.pk').checked
-    })).filter(c => c.name);
-    const data = await api({ action:'createTable', schema, table, columns });
-    tables = data.tables || [];
-    renderTables();
-    msg(data.message || 'Table created.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function addColumn() {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const column = document.getElementById('addColumnName').value.trim();
-    const type = document.getElementById('addColumnType').value;
-    const data = await api({ action:'addColumn', schema:selected.schema, table:selected.table, column, type });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column added.');
-  } catch(e) { msg(e.message, true); }
-}
-
-function fillDropText() { if (selected) document.getElementById('dropConfirm').value = `DROP ${selected.schema}.${selected.table}`; }
-
-async function dropTable() {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const confirm = document.getElementById('dropConfirm').value;
-    const old = selected;
-    const data = await api({ action:'dropTable', schema:selected.schema, table:selected.table, confirm });
-    selected = null; selectedColumns = []; selectedRows = [];
-    document.getElementById('selectedBadge').textContent = 'none';
-    document.getElementById('viewerTitle').textContent = 'Table Viewer';
-    document.getElementById('viewerBody').innerHTML = '<p class="small">Select a table on the left.</p>';
-    document.getElementById('dropConfirm').value = '';
-    tables = data.tables || [];
-    renderTables();
-    msg(data.message || `Deleted ${old.schema}.${old.table}.`);
-  } catch(e) { msg(e.message, true); }
-}
-
-
-async function renameColumn(idx) {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const oldColumn = selectedColumns[idx].column_name;
-    const newColumn = document.getElementById(`colname_${idx}`).value.trim();
-    if (!newColumn || newColumn === oldColumn) return msg('Enter a different column name.', true);
-    const data = await api({ action:'renameColumn', schema:selected.schema, table:selected.table, oldColumn, newColumn });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column renamed.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function changeColumnType(idx) {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const column = selectedColumns[idx].column_name;
-    const type = document.getElementById(`coltype_${idx}`).value;
-    if (!confirm(`Change ${column} to ${type}? Existing data must be convertible to the new type.`)) return;
-    const data = await api({ action:'changeColumnType', schema:selected.schema, table:selected.table, column, type });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column type changed.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function toggleRequired(idx) {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const column = selectedColumns[idx].column_name;
-    const required = selectedColumns[idx].is_nullable === 'YES';
-    const label = required ? 'make this column required / NOT NULL' : 'allow this column to contain nulls';
-    if (!confirm(`Are you sure you want to ${label}?`)) return;
-    const data = await api({ action:'setColumnRequired', schema:selected.schema, table:selected.table, column, required });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column requirement changed.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function dropColumn(idx) {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const column = selectedColumns[idx].column_name;
-    const expected = `DROP COLUMN ${selected.schema}.${selected.table}.${column}`;
-    const typed = prompt(`This will permanently delete the column and its data. Type exactly:
-${expected}`);
-    if (typed !== expected) return msg('Drop-column confirmation text did not match.', true);
-    const data = await api({ action:'dropColumn', schema:selected.schema, table:selected.table, column, confirm: typed });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Column deleted.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function insertRow() {
-  if (!selected) return msg('Select a table first.', true);
-  try {
-    const values = {};
-    selectedColumns.forEach(c => values[c.column_name] = document.getElementById(`insert_${c.column_name}`).value);
-    const data = await api({ action:'insertRow', schema:selected.schema, table:selected.table, values });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Row inserted.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function updateRow(idx) {
-  try {
-    const row = selectedRows[idx];
-    const values = {};
-    selectedColumns.forEach(c => values[c.column_name] = document.getElementById(`cell_${idx}_${c.column_name}`).value);
-    const data = await api({ action:'updateRow', schema:selected.schema, table:selected.table, rowid: row.__rowid, values });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Row updated.');
-  } catch(e) { msg(e.message, true); }
-}
-
-async function deleteRow(idx) {
-  try {
-    const row = selectedRows[idx];
-    if (!confirm('Delete this row?')) return;
-    const data = await api({ action:'deleteRow', schema:selected.schema, table:selected.table, rowid: row.__rowid });
-    selectedColumns = data.columns || []; selectedRows = data.rows || []; renderViewer(); msg(data.message || 'Row deleted.');
-  } catch(e) { msg(e.message, true); }
-}
-
-addNewColumnField('id', 'integer');
-addNewColumnField('name', 'text');
-loadTables();
+let tables=[], selected=null, selectedColumns=[], selectedRows=[];
+function msg(text,isError=false){const el=document.getElementById('message');el.className='status '+(isError?'err':'ok');el.textContent=text;}
+async function api(payload=null){const opts=payload?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}:{};const res=await fetch(API_URL,opts);const data=await res.json();if(!res.ok||data.success===false)throw new Error(data.error||'Request failed');return data;}
+function escapeAttr(v){return String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+function typeSelect(value='text'){return TYPES.map(t=>`<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join('');}
+function normalizeType(t){if(t==='character varying')return'varchar';if(t==='timestamp without time zone')return'timestamp';if(t==='timestamp with time zone')return'timestamptz';return TYPES.includes(t)?t:'text';}
+function renderTables(){const list=document.getElementById('tableList');if(!tables.length){list.innerHTML='<div class="empty">No tables found yet.</div>';return;}list.innerHTML=tables.map((t,i)=>`<div class="table-card"><div><b>${escapeAttr(t.table_name)}</b><br><span class="small">${escapeAttr(t.table_schema)}</span></div><div class="table-actions"><button class="primary" onclick="openTable('${t.table_schema}','${t.table_name}')">Open</button><button class="orange" onclick="renameTablePrompt('${t.table_schema}','${t.table_name}')">Rename</button><button class="red" onclick="dropTablePrompt('${t.table_schema}','${t.table_name}')">Delete</button></div></div>`).join('');}
+async function loadTables(){try{const data=await api({action:'listTables'});tables=data.tables||[];renderTables();msg(`Loaded ${tables.length} table(s).`);}catch(e){msg(e.message,true);}}
+async function createSample(){try{const data=await api({action:'createSample'});tables=data.tables||[];renderTables();msg(data.message||'Sample table created.');}catch(e){msg(e.message,true);}}
+function addNewColumnField(name='',type='text'){const wrap=document.createElement('div');wrap.className='row3';wrap.innerHTML=`<input placeholder="column name" value="${escapeAttr(name)}"><select>${typeSelect(type)}</select><span><label><input type="checkbox" class="required" style="width:auto"> Required</label><label><input type="checkbox" class="pk" style="width:auto"> Primary Key</label></span><button onclick="this.parentElement.remove()">Remove</button>`;document.getElementById('newColumns').appendChild(wrap);}
+async function createTable(){try{const table=document.getElementById('newTableName').value.trim();const schema=document.getElementById('newTableSchema').value.trim()||'public';const columns=[...document.querySelectorAll('#newColumns .row3')].map(row=>({name:row.children[0].value.trim(),type:row.children[1].value,required:row.querySelector('.required').checked,primaryKey:row.querySelector('.pk').checked})).filter(c=>c.name);const data=await api({action:'createTable',schema,table,columns});tables=data.tables||[];renderTables();msg(data.message||'Table created.');}catch(e){msg(e.message,true);}}
+async function renameTablePrompt(schema,oldTable){try{const newTable=prompt(`Rename ${schema}.${oldTable} to:`,oldTable);if(!newTable||newTable===oldTable)return;const data=await api({action:'renameTable',schema,oldTable,newTable:newTable.trim()});tables=data.tables||[];renderTables();msg(data.message||'Table renamed.');}catch(e){msg(e.message,true);}}
+async function dropTablePrompt(schema,table){try{const expected=`DROP ${schema}.${table}`;const typed=prompt(`This will permanently delete the table and its data. Type exactly:\n${expected}`);if(typed!==expected)return msg('Drop confirmation text did not match.',true);const data=await api({action:'dropTable',schema,table,confirm:typed});tables=data.tables||[];renderTables();msg(data.message||'Table deleted.');}catch(e){msg(e.message,true);}}
+async function openTable(schema,table){try{selected={schema,table};document.getElementById('mainShell').classList.add('blurred');document.getElementById('detailOverlay').classList.add('open');const data=await api({action:'getTable',schema,table});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(`Opened ${schema}.${table}.`);}catch(e){msg(e.message,true);}}
+function backToMain(){selected=null;selectedColumns=[];selectedRows=[];document.getElementById('detailOverlay').classList.remove('open');document.getElementById('mainShell').classList.remove('blurred');loadTables();}
+function renderWorkspace(){document.getElementById('workspaceTitle').textContent=`${selected.schema}.${selected.table}`;document.getElementById('workspaceSub').textContent='Table workspace: manage columns and rows only';const dataCols=selectedColumns.map(c=>c.column_name);const cols=`<section class="card"><h2>Columns</h2><div class="pad"><div class="columns-grid">${selectedColumns.map((c,idx)=>`<div class="column-row"><input id="colname_${idx}" value="${escapeAttr(c.column_name)}"><select id="coltype_${idx}">${typeSelect(normalizeType(c.data_type))}</select><span class="badge">${c.is_nullable==='YES'?'Nullable':'Required'}</span><span class="small">Default: ${escapeAttr(c.column_default||'none')}<br>Current type: ${escapeAttr(c.data_type)}</span><span><button class="primary" onclick="renameColumn(${idx})">Rename</button> <button class="orange" onclick="changeColumnType(${idx})">Type</button> <button onclick="toggleRequired(${idx})">${c.is_nullable==='YES'?'Make Required':'Allow Nulls'}</button> <button class="red" onclick="dropColumn(${idx})">Delete</button></span></div>`).join('')}</div><div class="footer-note small">Changing type or making required may fail if existing data cannot be converted or contains nulls.</div></div></section>`;
+const addCol=`<section class="card"><h2>Add Column</h2><div class="pad row3"><div><label>New Column Name</label><input id="addColumnName" placeholder="example: status"></div><div><label>Type</label><select id="addColumnType">${typeSelect('text')}</select></div><button class="orange" onclick="addColumn()">Add Column</button></div></section>`;
+const insert=`<section class="card"><h2>Insert New Row</h2><div class="pad"><div class="row">${dataCols.map(c=>`<div><label>${escapeAttr(c)}</label><input id="insert_${c}" placeholder="value for ${escapeAttr(c)}"></div>`).join('')}</div><br><button class="green" onclick="insertRow()">Insert Row</button></div></section>`;
+let rows='<section class="card"><h2>Rows</h2><div class="pad">';if(!selectedRows.length)rows+='<div class="empty">No rows found.</div>';else{rows+=`<div class="scroll"><table><thead><tr>${dataCols.map(c=>`<th>${escapeAttr(c)}</th>`).join('')}<th>Actions</th></tr></thead><tbody>`;rows+=selectedRows.map((r,idx)=>`<tr>${dataCols.map(c=>`<td><input id="cell_${idx}_${c}" value="${escapeAttr(r[c])}"></td>`).join('')}<td><button class="primary" onclick="updateRow(${idx})">Save</button> <button class="red" onclick="deleteRow(${idx})">Delete</button></td></tr>`).join('');rows+='</tbody></table></div><p class="small">This test app uses PostgreSQL ctid as a temporary row identifier. For a real app, use primary keys.</p>';}rows+='</div></section>';document.getElementById('workspaceBody').innerHTML=cols+addCol+insert+rows;}
+async function refreshSelected(){const data=await api({action:'getTable',schema:selected.schema,table:selected.table});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();}
+async function addColumn(){try{const column=document.getElementById('addColumnName').value.trim();const type=document.getElementById('addColumnType').value;await api({action:'addColumn',schema:selected.schema,table:selected.table,column,type});await refreshSelected();msg(`Column ${column} added.`);}catch(e){msg(e.message,true);}}
+async function renameColumn(idx){try{const oldColumn=selectedColumns[idx].column_name;const newColumn=document.getElementById(`colname_${idx}`).value.trim();if(!newColumn||newColumn===oldColumn)return msg('Enter a different column name.',true);const data=await api({action:'renameColumn',schema:selected.schema,table:selected.table,oldColumn,newColumn});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Column renamed.');}catch(e){msg(e.message,true);}}
+async function changeColumnType(idx){try{const column=selectedColumns[idx].column_name;const type=document.getElementById(`coltype_${idx}`).value;if(!confirm(`Change ${column} to ${type}? Existing data must be convertible.`))return;const data=await api({action:'changeColumnType',schema:selected.schema,table:selected.table,column,type});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Column type changed.');}catch(e){msg(e.message,true);}}
+async function toggleRequired(idx){try{const column=selectedColumns[idx].column_name;const required=selectedColumns[idx].is_nullable==='YES';if(!confirm(required?'Make this column required?':'Allow this column to contain nulls?'))return;const data=await api({action:'setColumnRequired',schema:selected.schema,table:selected.table,column,required});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Column requirement changed.');}catch(e){msg(e.message,true);}}
+async function dropColumn(idx){try{const column=selectedColumns[idx].column_name;const expected=`DROP COLUMN ${selected.schema}.${selected.table}.${column}`;const typed=prompt(`This permanently deletes the column and its data. Type exactly:\n${expected}`);if(typed!==expected)return msg('Drop-column confirmation text did not match.',true);const data=await api({action:'dropColumn',schema:selected.schema,table:selected.table,column,confirm:typed});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Column deleted.');}catch(e){msg(e.message,true);}}
+async function insertRow(){try{const values={};selectedColumns.forEach(c=>values[c.column_name]=document.getElementById(`insert_${c.column_name}`).value);const data=await api({action:'insertRow',schema:selected.schema,table:selected.table,values});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Row inserted.');}catch(e){msg(e.message,true);}}
+async function updateRow(idx){try{const row=selectedRows[idx];const values={};selectedColumns.forEach(c=>values[c.column_name]=document.getElementById(`cell_${idx}_${c.column_name}`).value);const data=await api({action:'updateRow',schema:selected.schema,table:selected.table,rowid:row.__rowid,values});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Row updated.');}catch(e){msg(e.message,true);}}
+async function deleteRow(idx){try{const row=selectedRows[idx];if(!confirm('Delete this row?'))return;const data=await api({action:'deleteRow',schema:selected.schema,table:selected.table,rowid:row.__rowid});selectedColumns=data.columns||[];selectedRows=data.rows||[];renderWorkspace();msg(data.message||'Row deleted.');}catch(e){msg(e.message,true);}}
+addNewColumnField('id','integer');addNewColumnField('name','text');loadTables();
 </script>
 </body>
 </html>
